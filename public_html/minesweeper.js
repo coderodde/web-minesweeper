@@ -131,7 +131,7 @@ function createRandomMinesForField(minesweeperField, mineLoadFactor) {
 var CanvasView = function(field, canvas) {
     this.field = field;
     this.canvas = canvas;
-    this.context = canvas.getContext("2d");
+    this.context = canvas.getContext("2d", {alpha: false});
     
     this.canvas.width  = (field.getWidth() + 1) + field.getWidth() * 40;
     this.canvas.height = (field.getHeight() + 1) + field.getHeight() * 40;
@@ -140,18 +140,39 @@ var CanvasView = function(field, canvas) {
 };
 
 CanvasView.prototype.draw = function() {
-    for (var y = 0; y < this.field.getHeight(); ++y) {
-        for (var x = 0; x < this.field.getWidth(); ++x) {
-            if (this.field.getTile(x, y).hasMine()) {
-                this.context.fillStyle = "red";
-            } else {
-                this.context.fillStyle = "green";
-            }
-            
-            this.context.fillRect(40 * x, 40 * y, 40, 40);
-            this.context.fill();
-        }
+    this.context.fillStyle = "#000000";
+    this.context.rect(0, 0, this.canvas.width, this.canvas.height);
+    this.context.fill();
+    
+    // Draw the horizontal separator bars:
+    this.context.strokeStyle = "#ffffff";
+    
+    for (var y = 0; y < this.field.getHeight() + 1; ++y) {
+        this.context.beginPath();
+        this.context.moveTo(0.5, 41 * y + 0.5);
+        this.context.lineTo(this.canvas.width + 0.5, 41 * y + 0.5);
+        this.context.stroke();
     }
+    
+    // Draw the vertical separator bars:
+    for (var x = 0; x < this.field.getWidth() + 1; ++x) {
+        this.context.beginPath();
+        this.context.moveTo(41 * x + 0.5, 0.5);
+        this.context.lineTo(41 * x + 0.5, this.canvas.height + 0.5);
+        this.context.stroke();
+    }
+//    for (var y = 0; y < this.field.getHeight(); ++y) {
+//        for (var x = 0; x < this.field.getWidth(); ++x) {
+//            if (this.field.getTile(x, y).hasMine()) {
+//                this.context.fillStyle = "red";
+//            } else {
+//                this.context.fillStyle = "green";
+//            }
+//            
+//            this.context.fillRect(40 * x, 40 * y, 40, 40);
+//            this.context.fill();
+//        }
+//    }
 };
 
 var canvas = document.getElementById("my_canvas");
