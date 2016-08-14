@@ -136,10 +136,10 @@ var CanvasView = function(field, canvas) {
     this.field = field;
     this.canvas = canvas;
     this.context = canvas.getContext("2d", {alpha: false});
-    this.highlightX = 0;
-    this.highlightY = 0;
-    this.previousHighlightX = 0;
-    this.previousHighlightY = 0;
+    this.highlightX = field.getWidth() / 2;
+    this.highlightY = field.getHeight() / 2;
+    this.previousValidHighlightX = this.highlightX;
+    this.previousValidHighlightY = this.highlightY;
     
     this.canvas.width  = (field.getWidth() + 1) + field.getWidth() * 40;
     this.canvas.height = (field.getHeight() + 1) + field.getHeight() * 40;
@@ -152,39 +152,63 @@ var CanvasView = function(field, canvas) {
         var x = event.clientX - rect.left;
         var y = event.clientY - rect.top;
         
-        if (x % 41 === 0 || y % 41 === 0) {
-            // Once here, the mouse cursor points to the border.
-            if (previousHighlightX >= 0 || previousHighlightY >= 0) {
-                that.previousHighlightX = -1;
-                that.previousHighlightY = -1;
-                that.highlightX = -1;
-                that.highlightY = -1;
-                console.log("redraw!!");
-                that.draw();
-            }
+        if ((x % 41 === 0) || (y % 41 === 0)) {
+            that.highlightX = -1;
+            that.draw();
+            console.log("border!");
         } else {
             var tileX = Math.floor((x - 1) / 41);
             var tileY = Math.floor((y - 1) / 41);
-
-            if (that.previousHighlightX !== tileX || 
-                    that.previousHighlightY !== tileY) {
+            
+            if (tileX >= 0 && tileY >= 0) {
+                that.previousValidHighlightX = that.highlightX;
+                that.previousValidHighlightY = that.highlightY;
                 that.highlightX = tileX;
                 that.highlightY = tileY;
-                that.previousHighlightX = tileX;
-                that.previousHighlightY = tileY;
-                console.log("redraw!");
                 that.draw();
             }
         }
-        
     });  
+    
+    this.canvas.addEventListener('mouseout', function(event) {
+        that.highlightX = that.previousValidHighlightX;
+        that.highlightY = that.previousValidHighlightY;
+        that.draw();
+    });
+    
+    this.canvas.addEventListener('click', function(event) {
+        var rect = canvas.getBoundingClientRect();
+        var x = event.clientX - rect.left;
+        var y = event.clientY - rect.top;
+        
+        if (x % 41 === 0 || y % 41 === 0) {
+            // The user clicked the border. Do nothing.
+        } else {
+            var tileX = Math.floor((x - 1) / 41);
+            var tileY = Math.floor((y - 1) / 41);
+            
+            var field = that.field;
+            var fieldTile = field.getTile(tileX, tileY);
+            
+            if (fieldTile.isOpen()) {
+                // The tile was already opened. Since we are still executing,
+                // fieldTile did not contain a mine.
+            } else if (fieldTile.hasMine()) {
+                fieldTile.open();
+                alert("Kaboom!");
+                return;
+            } else {
+                fieldTile.open();
+                that.draw();
+            }
+        }
+    });
 };
 
-CanvasView.prototype.setHighlightCoordinates = function(x, y) {
-    this.highlightX = x;
-    this.highlightY = y;
-    
-    
+CanvasView.prototype.openTile = function(x, y) {
+    var tile = this.field.getTile(x, y);
+    tile.open();
+    this.draw();
 };
 
 CanvasView.prototype.draw = function() {
@@ -192,7 +216,7 @@ CanvasView.prototype.draw = function() {
     this.context.rect(0, 0, this.canvas.width, this.canvas.height);
     this.context.fill();
     
-    this.context.strokeStyle = "#ffffff";
+    this.context.strokeStyle = "#888888";
     
     // Draw the horizontal separator bars:
     for (var y = 0; y < this.field.getHeight() + 1; ++y) {
@@ -217,19 +241,30 @@ CanvasView.prototype.draw = function() {
                 if (this.field.getTile(x, y).hasMine()) {
                     this.context.fillStyle = "red";
                 } else {
-                    this.context.fillStyle = "gray";
+                    this.context.fillStyle = "white";
                 }
                 
                 this.context.fillRect(1 + 41 * x, 1 + 41 * y, 40, 40);
                 this.context.fill();
+                
+                if (this.field.getTile(x, y).hasMine()) {
+                    this.context.fillStyle = "white";
+                    this.context.font = "35px Monospaced";
+                    this.context.fillText("!", 15 + 41 * x, 32 + 41 * y);
+                } else {
+                    
+                }
             }
         }
     }
     
     // Draw the highlight of a tile:
     if (this.highlightX >= 0 && this.highlightY >= 0) {
-        this.context.fillStyle = "green";
-        this.context.fillRect(1 + 41 * this.highlightX, 1 + 41 * this.highlightY, 40 , 40);
+        this.context.fillStyle = "#FF9100";
+        this.context.fillRect(1 + 41 * this.highlightX,
+                              1 + 41 * this.highlightY, 
+                              40, 
+                              40);
     }
 };
 
@@ -242,7 +277,6 @@ function test() {
     var coords = createRandomMinesForField(field, 0.5);
     populateMinesweeperFieldWithMines(field, coords);
     
-    alert("Width: " + field.getWidth() + ", height: " + field.getHeight() + ", coords: " + coords.length);
     var str = "";
     
     for (var y = 0; y < field.getHeight(); ++y) {
